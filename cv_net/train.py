@@ -3,14 +3,17 @@ import torch
 import torch.utils.data as data
 import torch.nn as nn
 import torch.optim as optim
-
+# torch vision
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
-from util.util import set_seed
-
+from cv_net.util.util import set_seed
+# lighting
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-from lighting_util import create_model
+from cv_net.util.util import create_model
+# util
+from googlenet import GoogleNet
+from resnet import ResNet
 
 
 class CIFARModule(pl.LightningModule):
@@ -78,8 +81,9 @@ class CIFARModule(pl.LightningModule):
         self.log('test_acc', acc)
 
 
-def train_model(model_name, save_name=None, **kwargs):
+def train_model(model_lookup_dict, model_name, save_name=None, **kwargs):
     """
+    :param model_lookup_dict: Dictionary that maps model names to model classes
     :param model_name: Name of the model you want to run. Is used to look up the class in "model_dict"
     :param save_name: If specified, this name will be used for creating the checkpoint and logging directory.
     :param kwargs:
@@ -91,7 +95,7 @@ def train_model(model_name, save_name=None, **kwargs):
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          # We run on a GPU (if possible)
                          devices=1,  # How many GPUs/CPUs we want to use (1 is enough for the notebooks)
-                         max_epochs=180,  # How many epochs to train for if no patience is set
+                         max_epochs=3,  # How many epochs to train for if no patience is set
                          callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"),
                                     # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                                     LearningRateMonitor("epoch")],  # Log learning rate every epoch
@@ -107,7 +111,7 @@ def train_model(model_name, save_name=None, **kwargs):
             pretrained_filename)  # Automatically loads the model with the saved hyperparameters
     else:
         pl.seed_everything(42)  # To be reproducable
-        model = CIFARModule(model_name=model_name, **kwargs)
+        model = CIFARModule(model_dict=model_lookup_dict, model_name=model_name, **kwargs)
         trainer.fit(model, train_loader, val_loader)
         model = CIFARModule.load_from_checkpoint(
             trainer.checkpoint_callback.best_model_path)  # Load best checkpoint after training
@@ -153,9 +157,37 @@ if __name__ == "__main__":
     val_set, _ = torch.utils.data.random_split(val_dataset, [45000, 5000])
     test_set = CIFAR10(root=DATASET_PATH, train=False, download=True, transform=test_transform)
 
-    train_loader = data.DataLoader(train_set, batch_size=128, shuffle=True, drop_last=True, pin_memory=True, num_workers=4)
-    val_loader = data.DataLoader(val_set, batch_size=128, shuffle=False, drop_last=False, num_workers=4)
-    test_loader = data.DataLoader(test_set, batch_size=128, shuffle=False, drop_last=False, num_workers=4)
+    train_loader = data.DataLoader(train_set, batch_size=128, shuffle=True, drop_last=True, pin_memory=True,
+                                   num_workers=4, persistent_workers=True)
+    val_loader = data.DataLoader(val_set, batch_size=128, shuffle=False, drop_last=False, num_workers=4,
+                                 persistent_workers=True)
+    test_loader = data.DataLoader(test_set, batch_size=128, shuffle=False, drop_last=False, num_workers=4,
+                                  persistent_workers=True)
+    # train a simple google net
+    model_lookup = {"GoogleNet": GoogleNet}
+    googlenet_model, googlenet_result = train_model(model_lookup, "GoogleNet",
+                                                    save_name="googlenet",
+                                                    model_hparams={"num_classes": 10, "act_fn_name": "relu"},
+                                                    optimizer_name="Adam",
+                                                    optimizer_hparams={"lr": 1e-3, "weight_decay": 1e-4})
+    print("GoogleNet result:", googlenet_result)
+    # train a simple resnet
+    model_lookup["ResNet"] = ResNet
+    resnet_model, resnet_result = train_model(model_name="ResNet",
+                                               model_hparams={"num_classes": 10,
+                                                              "c_hidden": [16, 32, 64],
+                                                              "num_blocks": [3, 3, 3],
+                                                              "act_fn_name": "relu"},
+                                               optimizer_name="SGD",
+                                               optimizer_hparams={"lr": 0.1,
+                                                                  "momentum": 0.9,
+                                                                  "weight_decay": 1e-4})
+    print("ResNet result:", resnet_result)
 
-    model_lookup = {}
+
+
+
+
+
+
 

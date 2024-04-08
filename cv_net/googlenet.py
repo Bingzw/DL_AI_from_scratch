@@ -1,13 +1,8 @@
 import torch
 import torch.nn as nn
 from types import SimpleNamespace
+from cv_net.util.util import act_fn_by_name
 
-act_fn_by_name = {
-    "tanh": nn.Tanh,
-    "relu": nn.ReLU,
-    "leakyrelu": nn.LeakyReLU,
-    "gelu": nn.GELU
-}
 
 class InceptionBlock(nn.Module):
     def __init__(self, c_in, c_red: dict, c_out: dict, act_fn):
@@ -55,16 +50,61 @@ class InceptionBlock(nn.Module):
         return torch.cat([x_1x1, x_3x3, x_5x5, x_max], dim=1)
 
 
-
 class GoogleNet(nn.Module):
     def __init__(self, num_classes=10, act_fn_name="relu", **kwargs):
         super().__init__()
-        self.hparams = SimpleNamespace(num_classes=num_classes, act_fn_name=act_fn_name, act_fn=act_fn_by_name[act_fn_name])
+        self.hparams = SimpleNamespace(num_classes=num_classes, act_fn_name=act_fn_name,
+                                       act_fn=act_fn_by_name[act_fn_name])
         self._create_network()
         self._init_params()
 
     def _create_network(self):
-        pass
+        self.input_net = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            self.hparams.act_fn()
+        )
+        self.inception_blocks = nn.Sequential(
+            InceptionBlock(64, c_red={"3x3": 32, "5x5": 16}, c_out={"1x1": 16, "3x3": 32, "5x5": 8, "max": 8},
+                           act_fn=self.hparams.act_fn),
+            InceptionBlock(64, c_red={"3x3": 32, "5x5": 16}, c_out={"1x1": 24, "3x3": 48, "5x5": 12, "max": 12},
+                           act_fn=self.hparams.act_fn),
+            nn.MaxPool2d(3, stride=2, padding=1),  # 32x32 => 16x16
+            InceptionBlock(96, c_red={"3x3": 32, "5x5": 16}, c_out={"1x1": 24, "3x3": 48, "5x5": 12, "max": 12},
+                           act_fn=self.hparams.act_fn),
+            InceptionBlock(96, c_red={"3x3": 32, "5x5": 16}, c_out={"1x1": 16, "3x3": 48, "5x5": 16, "max": 16},
+                           act_fn=self.hparams.act_fn),
+            InceptionBlock(96, c_red={"3x3": 32, "5x5": 16}, c_out={"1x1": 16, "3x3": 48, "5x5": 16, "max": 16},
+                           act_fn=self.hparams.act_fn),
+            InceptionBlock(96, c_red={"3x3": 32, "5x5": 16}, c_out={"1x1": 32, "3x3": 48, "5x5": 24, "max": 24},
+                           act_fn=self.hparams.act_fn),
+            nn.MaxPool2d(3, stride=2, padding=1),  # 16x16 => 8x8
+            InceptionBlock(128, c_red={"3x3": 48, "5x5": 16}, c_out={"1x1": 32, "3x3": 64, "5x5": 16, "max": 16},
+                           act_fn=self.hparams.act_fn),
+            InceptionBlock(128, c_red={"3x3": 48, "5x5": 16}, c_out={"1x1": 32, "3x3": 64, "5x5": 16, "max": 16},
+                           act_fn=self.hparams.act_fn)
+        )
+        self.output_net = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(128, self.hparams.num_classes)
+        )
+
+    def _init_params(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(
+                    m.weight, nonlinearity=self.hparams.act_fn_name)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        x = self.input_net(x)
+        x = self.inception_blocks(x)
+        x = self.output_net(x)
+        return x
+
 
 
 

@@ -164,3 +164,4 @@ pyvenv.cfg
 /bin/
 /data/
 /share/
+/saved_models/
