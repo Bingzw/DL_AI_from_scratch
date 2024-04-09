@@ -11,9 +11,10 @@ from cv_net.util.util import set_seed
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from cv_net.util.util import create_model
-# util
+# model
 from googlenet import GoogleNet
 from resnet import ResNet
+from densenet import DenseNet
 
 
 class CIFARModule(pl.LightningModule):
@@ -164,8 +165,10 @@ if __name__ == "__main__":
     test_loader = data.DataLoader(test_set, batch_size=128, shuffle=False, drop_last=False, num_workers=4,
                                   persistent_workers=True)
     # train a simple google net
+
     model_lookup = {"GoogleNet": GoogleNet}
-    googlenet_model, googlenet_result = train_model(model_lookup, "GoogleNet",
+    googlenet_model, googlenet_result = train_model(model_lookup_dict=model_lookup,
+                                                        model_name="GoogleNet",
                                                     save_name="googlenet",
                                                     model_hparams={"num_classes": 10, "act_fn_name": "relu"},
                                                     optimizer_name="Adam",
@@ -173,16 +176,34 @@ if __name__ == "__main__":
     print("GoogleNet result:", googlenet_result)
     # train a simple resnet
     model_lookup["ResNet"] = ResNet
-    resnet_model, resnet_result = train_model(model_name="ResNet",
+    resnet_model, resnet_result = train_model(model_lookup_dict=model_lookup,
+                                              model_name="ResNet",
                                                model_hparams={"num_classes": 10,
                                                               "c_hidden": [16, 32, 64],
                                                               "num_blocks": [3, 3, 3],
                                                               "act_fn_name": "relu"},
+                                              save_name="resnet",
                                                optimizer_name="SGD",
                                                optimizer_hparams={"lr": 0.1,
                                                                   "momentum": 0.9,
                                                                   "weight_decay": 1e-4})
     print("ResNet result:", resnet_result)
+
+    # train a simple densenet
+    model_lookup["DenseNet"] = DenseNet
+    print(model_lookup)
+    densenet_model, densenet_results = train_model(model_lookup_dict=model_lookup,
+                                                   model_name="DenseNet",
+                                                   model_hparams={"num_classes": 10,
+                                                                  "num_layers": [3, 3],
+                                                                  "bn_size": 2,
+                                                                  "growth_rate": 4,
+                                                                  "act_fn_name": "relu"},
+                                                   save_name="densenet",
+                                                   optimizer_name="Adam",
+                                                   optimizer_hparams={"lr": 1e-3,
+                                                                      "weight_decay": 1e-4})
+    print("DenseNet result:", densenet_results)
 
 
 
