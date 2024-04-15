@@ -11,7 +11,7 @@ DL_genAI_practicing/
   |  |- reco_data.py: the data processing and loading
   |  |- train.py: the training script
 ```
-When training the dlrm net, we are using the pytorch lightning library to facilitate the training process. Detailed information about the pytorch lightning library can be found here: https://pytorch-lightning.readthedocs.io/en/latest/
+When training the dlrm net, we are using the pytorch lightning library to facilitate the training process. Detailed information about the pytorch lightning library can be found here: https://lightning.ai/docs/pytorch/stable/ 
 
 Below is the training result of the DLRM model on the categorical feature encoding challenge dataset:
 
