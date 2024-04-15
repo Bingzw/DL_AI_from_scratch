@@ -1,14 +1,7 @@
-import random
-import numpy as np
 import torch
-
 import os
-import torch.utils.data as data
-import torch.nn as nn
-import torch.optim as optim
 # lighting
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 # model
 from reco_data import DLRMDataModule
 from dlrmnet import DLRMModule

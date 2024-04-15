@@ -9,6 +9,10 @@ class FeatureInteraction(nn.Module):
         super().__init__()
 
     def forward(self, inputs):
+        """
+        :param inputs: the input tensor of shape (batch_size, feature_dim)
+        :return: the interaction tensor of shape (batch_size, out_dim)
+        """
         feature_dim = inputs.shape[1]
 
         concat_features = inputs.view(-1, feature_dim, 1)
@@ -26,6 +30,12 @@ class FeatureInteraction(nn.Module):
 
 class DLRMNet(nn.Module):
     def __init__(self, num_numerical_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims):
+        """
+        :param num_numerical_features: the number of numerical features
+        :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
+        :param bottom_mlp_dims: the dimensions of the bottom MLP
+        :param top_mlp_dims: the dimensions of the top MLP
+        """
         super(DLRMNet, self).__init__()
         self.num_numerical_features = num_numerical_features
 
@@ -59,6 +69,11 @@ class DLRMNet(nn.Module):
         self.top_mlp = nn.Sequential(*top_layers)
 
     def forward(self, numerical_features, categorical_features):
+        """
+        :param numerical_features: the numerical features tensor
+        :param categorical_features: the categorical features tensor
+        :return: the output tensor
+        """
         # Pass dense features through bottom MLP
         dense_output = self.bottom_mlp(numerical_features)
 
@@ -81,6 +96,13 @@ class DLRMNet(nn.Module):
 
 class DLRMModule(pl.LightningModule):
     def __init__(self, num_numerical_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims, lr=1e-3):
+        """
+        :param num_numerical_features: the number of numerical features
+        :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
+        :param bottom_mlp_dims: the dimensions of the bottom MLP
+        :param top_mlp_dims: the dimensions of the top MLP
+        :param lr: the learning rate
+        """
         super(DLRMModule, self).__init__()
         self.model = DLRMNet(num_numerical_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims)
         self.lr = lr
@@ -88,13 +110,14 @@ class DLRMModule(pl.LightningModule):
         self.training_step_outputs = []
         self.validation_step_outputs = []
         self.test_step_outputs = []
+        self.val_loss = []
 
     def forward(self, numerical_features, categorical_features):
         return self.model(numerical_features, categorical_features)
 
     def training_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
-        outputs = self.model(dense_features, sparse_features).squeeze()
+        outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
         self.log('train_loss', loss*1000)
         preds = torch.sigmoid(outputs)
@@ -104,9 +127,10 @@ class DLRMModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
-        outputs = self.model(dense_features, sparse_features).squeeze()
+        outputs = self(dense_features, sparse_features).squeeze()
         loss = nn.BCEWithLogitsLoss()(outputs, labels.float())
         self.log('val_loss', loss*1000)
+        self.val_loss.append(loss*1000)
         # Convert predictions to binary (0 or 1) using sigmoid function
         preds = torch.sigmoid(outputs)
         result ={'loss': loss, 'preds': preds, 'targets': labels}
@@ -114,7 +138,7 @@ class DLRMModule(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
-        outputs = self.model(dense_features, sparse_features).squeeze()
+        outputs = self(dense_features, sparse_features).squeeze()
         loss = nn.BCEWithLogitsLoss()(outputs, labels.float())
         self.log('test_loss', loss*1000)
         preds = torch.sigmoid(outputs)

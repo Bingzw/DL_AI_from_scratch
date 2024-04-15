@@ -162,6 +162,7 @@ pyvenv.cfg
 .DS_Store
 .idea/
 /bin/
-/data/
+/data/cifar-10-batches-py/
 /share/
 /saved_models/
+/reco_model/logs/
