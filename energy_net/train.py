@@ -142,7 +142,7 @@ if __name__ == "__main__":
         step_size = callback.num_steps // callback.vis_steps
         imgs_to_plot = imgs_per_step[step_size - 1::step_size, i]
         imgs_to_plot = torch.cat([imgs_per_step[0:1, i], imgs_to_plot], dim=0)
-        grid = torchvision.utils.make_grid(imgs_to_plot, nrow=imgs_to_plot.shape[0], normalize=True, range=(-1, 1),
+        grid = torchvision.utils.make_grid(imgs_to_plot, nrow=imgs_to_plot.shape[0], normalize=True, value_range=(-1, 1),
                                            pad_value=0.5, padding=2)
         grid = grid.permute(1, 2, 0)
         plt.figure(figsize=(8, 8))
