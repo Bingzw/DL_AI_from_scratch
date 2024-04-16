@@ -33,7 +33,7 @@ class Sampler:
         inp_imgs = torch.cat([old_imgs, rand_imgs], dim=0).detach().to(device)
 
         # perform MCMC sampling
-        inp_imgs = Sampler.generate_samples(self.model, inp_imgs, steps=steps, step_size=step_size, device=device)
+        inp_imgs = Sampler.generate_samples(self.model, inp_imgs, steps=steps, step_size=step_size)
 
         # add new images to the buffer and remove old ones if necessary
         self.examples = list(inp_imgs.to(torch.device("cpu")).chunk(self.sample_size, dim=0)) + self.examples
@@ -41,7 +41,7 @@ class Sampler:
         return inp_imgs
 
     @staticmethod
-    def generate_samples(model, inp_imgs, steps=60, step_size=10, return_img_per_step=False, device="cuda"):
+    def generate_samples(model, inp_imgs, steps=60, step_size=10, return_img_per_step=False):
         """
         Function for generating samples using Langevin dynamics
         :param model: Neural network model to use for modeling E_theta
@@ -77,13 +77,13 @@ class Sampler:
             inp_imgs.data.add_(noise.data)  # calling add_ on the data attribute of the tensor does not affect gradient tracking
             inp_imgs.data.clamp(min=-1.0, max=1.0)  # cap the values to -1~1
             # Calculate gradients for the current input
-            out_imgs = -model(inp_imgs)
+            out_imgs = -model(inp_imgs) # the model represents -E_theta
             out_imgs.sum().backward()
             inp_imgs.grad.data.clamp_(-0.03, 0.03) # For stability, we clip the gradients
             # Apply gradients to current samples
             inp_imgs.data.add_(-step_size * inp_imgs.grad.data)
             inp_imgs.grad.detach_()  # gradient calculated in the current iteration does not affect subsequent iterations
-            inp_imgs.grad.zero_()  # avoid accumulating gradients from previous iterations
+            inp_imgs.grad.zero_()  # avoid accumulating gradients from previous iterations due to line 84
             inp_imgs.data.clamp_(-1.0, 1.0)
 
             if return_img_per_step:
