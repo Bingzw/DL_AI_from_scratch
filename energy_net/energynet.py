@@ -18,7 +18,7 @@ class CNNModel(nn.Module):
         c_hid3 = hidden_features*2
 
         self.cnn_layers = nn.Sequential(
-            nn.Conv2d(1, c_hid1, kernel_size=5, stride=2, padding=4),  # (28 + 2*padding - kernel_size - 1 - 1)/stride + 1 = 16
+            nn.Conv2d(1, c_hid1, kernel_size=5, stride=2, padding=4),  # (28 + 2*padding - kernel_size)/stride + 1 = 16
             Swish(),
             nn.Conv2d(c_hid1, c_hid2, kernel_size=3, stride=2, padding=1),  # 8*8
             Swish(),
