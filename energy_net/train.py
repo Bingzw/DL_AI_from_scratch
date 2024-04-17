@@ -16,7 +16,7 @@ from data_sampler import Sampler
 from util import set_seed
 
 
-class GenerateCallback(pl.Callback):
+class GenerateCallback(pl.Callback):  # used to track image generation process and visualize it in tensorboard
     def __init__(self, batch_size=8, vis_steps=8, num_steps=256, every_n_epochs=5):
         super().__init__()
         self.batch_size = batch_size         # Number of images to generate
@@ -152,3 +152,5 @@ if __name__ == "__main__":
                    labels=[1] + list(range(step_size, imgs_per_step.shape[0] + 1, step_size)))
         plt.yticks([])
         plt.show()
+
+
