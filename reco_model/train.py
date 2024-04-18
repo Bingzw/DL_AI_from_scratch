@@ -2,6 +2,7 @@ import torch
 import os
 # lighting
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 # model
 from reco_data import DLRMDataModule
 from dlrmnet import DLRMModule
@@ -10,7 +11,7 @@ from dlrmnet import DLRMModule
 if __name__ == "__main__":
     # Set seed
     SEED = 42
-    CHECKPOINT_PATH = "../saved_models/dlrm_net"
+    CHECKPOINT_PATH = "../saved_models/reco_models"
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     # set device
@@ -44,7 +45,10 @@ if __name__ == "__main__":
                          # We run on a GPU (if possible)
                          devices=1,  # How many GPUs/CPUs we want to use (1 is enough for the notebooks)
                          max_epochs=num_epochs,  # How many epochs to train for if no patience is set
-                         logger=logger,
+                         #logger=logger,
+                         callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"),
+                                    # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
+                                    LearningRateMonitor("epoch")],
                          enable_progress_bar=True)  # Set to False if you do not want a progress bar
 
     # Check whether pretrained model exists. If yes, load it and skip training
@@ -75,9 +79,10 @@ if __name__ == "__main__":
     val_result = trainer.test(model, val_loader, verbose=False)
     test_result = trainer.test(model, test_loader, verbose=False)
     result = {"test": test_result[0]["test_acc"], "val": val_result[0]["test_acc"]}
+    print("Best model checkpoint path:", trainer.checkpoint_callback.best_model_path)
     print(result)
 
-    # run this in terminal to check logs: tensorboard --logdir reco_model/logs
+    # run this in terminal to check logs: tensorboard --logdir saved_models/dlrm_net/lightning_logs
 
 
 

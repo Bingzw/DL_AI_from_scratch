@@ -1,9 +1,7 @@
-import random
 import os
 import matplotlib.pyplot as plt
 # PyTorch
 import torch
-import torch.nn as nn
 import torch.utils.data as data
 # Torchvision
 import torchvision
