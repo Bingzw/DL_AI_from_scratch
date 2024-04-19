@@ -20,10 +20,10 @@ if __name__ == "__main__":
     data_path = "../../data/reco_data/sampled_criteo_data.txt"
 
     # set hyperparameters
-    batch_size = 64
+    batch_size = 128
     hidden_dim = 10
-    learning_rate = 0.001
-    num_epochs = 30
+    learning_rate = 0.0001
+    num_epochs = 100
     # create data module
     dlrm_data = CriteoDataModule(data_path, batch_size=batch_size, hidden_dim=hidden_dim)
 

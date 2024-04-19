@@ -20,10 +20,10 @@ if __name__ == "__main__":
     data_path = "../../data/reco_data/sampled_criteo_data.txt"
 
     # set hyperparameters
-    batch_size = 64
+    batch_size = 128
     hidden_dim = 10
-    learning_rate = 0.001
-    num_epochs = 30
+    learning_rate = 0.0001
+    num_epochs = 100
     # create data module
     criteo_data = CriteoDataModule(data_path, batch_size=batch_size, hidden_dim=hidden_dim)
     print(criteo_data.dataset.features.head())
@@ -76,3 +76,5 @@ if __name__ == "__main__":
     result = {"test": test_result[0]["test_acc"]/1000, "val": val_result[0]["test_acc"]/1000}
     print("Best model checkpoint path:", trainer.checkpoint_callback.best_model_path)
     print(result)
+
+    # run this in terminal to check logs: tensorboard --logdir saved_models/reco_models/dfmnet/lightning_logs

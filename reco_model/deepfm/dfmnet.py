@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import torch.optim as optim
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 
 
 class FactorizationMachine(nn.Module):
@@ -97,7 +99,7 @@ class DeepFMModule(pl.LightningModule):
         dense_features, sparse_features, labels = batch
         outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
-        self.log('train_loss', loss*1000)
+        self.log('train_loss', loss)
         preds = torch.sigmoid(outputs)
         result ={'loss': loss, 'preds': preds, 'targets': labels}
         self.training_step_outputs.append(result)
@@ -107,8 +109,8 @@ class DeepFMModule(pl.LightningModule):
         dense_features, sparse_features, labels = batch
         outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
-        self.log('val_loss', loss*1000)
-        self.val_loss.append(loss*1000)
+        self.log('val_loss', loss)
+        self.val_loss.append(loss)
         # Convert predictions to binary (0 or 1) using sigmoid function
         preds = torch.sigmoid(outputs)
         result ={'loss': loss, 'preds': preds, 'targets': labels}
@@ -118,42 +120,66 @@ class DeepFMModule(pl.LightningModule):
         dense_features, sparse_features, labels = batch
         outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
-        self.log('test_loss', loss*1000)
+        self.log('test_loss', loss)
         preds = torch.sigmoid(outputs)
         result = {'loss': loss, 'preds': preds, 'targets': labels}
         self.test_step_outputs.append(result)
 
     def on_train_epoch_end(self):
-        preds = torch.cat([x['preds'] for x in self.training_step_outputs])
-        targets = torch.cat([x['targets'] for x in self.training_step_outputs])
+        preds = torch.cat([x['preds'] for x in self.training_step_outputs]).detach().cpu().numpy()
+        targets = torch.cat([x['targets'] for x in self.training_step_outputs]).detach().cpu().numpy()
         # Convert predictions to binary (0 or 1) using threshold of 0.5
-        binary_preds = (preds > 0.5).float()
+        binary_preds = torch.from_numpy(preds > 0.5).float().cpu().numpy()
         # Calculate accuracy
         correct = (binary_preds == targets).sum().item()
         acc = correct / len(targets)
-        self.log('train_acc', acc*1000, prog_bar=True)
+        self.log('train_acc', acc, prog_bar=True)
+        auc = roc_auc_score(targets, preds)
+        self.log('train_auc', auc, prog_bar=True)
+        f1 = f1_score(targets, binary_preds)
+        self.log('train_f1', f1, prog_bar=True)
+        precision = precision_score(targets, binary_preds)
+        self.log('train_precision', precision, prog_bar=True)
+        recall = recall_score(targets, binary_preds)
+        self.log('train_recall', recall, prog_bar=True)
         self.training_step_outputs.clear()  # free memory
 
     def on_validation_epoch_end(self):
-        preds = torch.cat([x['preds'] for x in self.validation_step_outputs])
-        targets = torch.cat([x['targets'] for x in self.validation_step_outputs])
+        preds = torch.cat([x['preds'] for x in self.validation_step_outputs]).detach().cpu().numpy()
+        targets = torch.cat([x['targets'] for x in self.validation_step_outputs]).detach().cpu().numpy()
         # Convert predictions to binary (0 or 1) using threshold of 0.5
-        binary_preds = (preds > 0.5).float()
+        binary_preds = torch.from_numpy(preds > 0.5).float().cpu().numpy()
         # Calculate accuracy
         correct = (binary_preds == targets).sum().item()
         acc = correct / len(targets)
-        self.log('val_acc', acc*1000, prog_bar=True)
+        self.log('val_acc', acc, prog_bar=True)
+        auc = roc_auc_score(targets, preds)
+        self.log('val_auc', auc, prog_bar=True)
+        f1 = f1_score(targets, binary_preds)
+        self.log('val_f1', f1, prog_bar=True)
+        precision = precision_score(targets, binary_preds)
+        self.log('val_precision', precision, prog_bar=True)
+        recall = recall_score(targets, binary_preds)
+        self.log('val_recall', recall, prog_bar=True)
         self.validation_step_outputs.clear()  # free memory
 
     def on_test_epoch_end(self):
-        preds = torch.cat([x['preds'] for x in self.test_step_outputs])
-        targets = torch.cat([x['targets'] for x in self.test_step_outputs])
+        preds = torch.cat([x['preds'] for x in self.test_step_outputs]).detach().cpu().numpy()
+        targets = torch.cat([x['targets'] for x in self.test_step_outputs]).detach().cpu().numpy()
         # Convert predictions to binary (0 or 1) using threshold of 0.5
-        binary_preds = (preds > 0.5).float()
+        binary_preds = torch.from_numpy(preds > 0.5).float().cpu().numpy()
         # Calculate accuracy
         correct = (binary_preds == targets).sum().item()
         acc = correct / len(targets)
-        self.log('test_acc', acc*1000, prog_bar=True)
+        self.log('test_acc', acc, prog_bar=True)
+        auc = roc_auc_score(targets, preds)
+        self.log('test_auc', auc, prog_bar=True)
+        f1 = f1_score(targets, binary_preds)
+        self.log('test_f1', f1, prog_bar=True)
+        precision = precision_score(targets, binary_preds)
+        self.log('test_precision', precision, prog_bar=True)
+        recall = recall_score(targets, binary_preds)
+        self.log('test_recall', recall, prog_bar=True)
         self.test_step_outputs.clear()  # free memory
 
     def configure_optimizers(self):
