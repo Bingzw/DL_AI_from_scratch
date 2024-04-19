@@ -29,15 +29,15 @@ class FeatureInteraction(nn.Module):
 
 
 class DLRMNet(nn.Module):
-    def __init__(self, num_numerical_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims):
+    def __init__(self, num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims):
         """
-        :param num_numerical_features: the number of numerical features
+        :param num_dense_features: the number of numerical features
         :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
         :param bottom_mlp_dims: the dimensions of the bottom MLP
         :param top_mlp_dims: the dimensions of the top MLP
         """
         super(DLRMNet, self).__init__()
-        self.num_numerical_features = num_numerical_features
+        self.num_dense_features = num_dense_features
 
         # Embedding layers for categorical features
         self.embedding_layers = nn.ModuleList(
@@ -46,7 +46,7 @@ class DLRMNet(nn.Module):
 
         # Bottom MLP
         bottom_layers = []
-        bottom_layers.append(nn.Linear(num_numerical_features, bottom_mlp_dims[0]))
+        bottom_layers.append(nn.Linear(num_dense_features, bottom_mlp_dims[0]))
         bottom_layers.append(nn.ReLU())
         for i in range(1, len(bottom_mlp_dims)):
             bottom_layers.append(nn.Linear(bottom_mlp_dims[i - 1], bottom_mlp_dims[i]))
@@ -68,17 +68,17 @@ class DLRMNet(nn.Module):
         top_layers.append(nn.Linear(top_mlp_dims[-1], 1))
         self.top_mlp = nn.Sequential(*top_layers)
 
-    def forward(self, numerical_features, categorical_features):
+    def forward(self, dense_features, sparse_features):
         """
-        :param numerical_features: the numerical features tensor
-        :param categorical_features: the categorical features tensor
+        :param dense_features: the numerical features tensor
+        :param sparse_features: the categorical features tensor
         :return: the output tensor
         """
         # Pass dense features through bottom MLP
-        dense_output = self.bottom_mlp(numerical_features)
+        dense_output = self.bottom_mlp(dense_features)
 
         # Embed categorical features
-        embeddings = [embedding_layer(categorical_features[:, i]) for i, embedding_layer in
+        embeddings = [embedding_layer(sparse_features[:, i]) for i, embedding_layer in
                       enumerate(self.embedding_layers)]
         embeddings = torch.cat(embeddings, dim=1)
 
@@ -95,16 +95,16 @@ class DLRMNet(nn.Module):
 
 
 class DLRMModule(pl.LightningModule):
-    def __init__(self, num_numerical_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims, lr=1e-3):
+    def __init__(self, num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims, lr=1e-3):
         """
-        :param num_numerical_features: the number of numerical features
+        :param num_dense_features: the number of numerical features
         :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
         :param bottom_mlp_dims: the dimensions of the bottom MLP
         :param top_mlp_dims: the dimensions of the top MLP
         :param lr: the learning rate
         """
         super(DLRMModule, self).__init__()
-        self.model = DLRMNet(num_numerical_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims)
+        self.model = DLRMNet(num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims)
         self.lr = lr
         self.loss = nn.BCEWithLogitsLoss()
         self.training_step_outputs = []
@@ -112,8 +112,8 @@ class DLRMModule(pl.LightningModule):
         self.test_step_outputs = []
         self.val_loss = []
 
-    def forward(self, numerical_features, categorical_features):
-        return self.model(numerical_features, categorical_features)
+    def forward(self, dense_features, sparse_features):
+        return self.model(dense_features, sparse_features)
 
     def training_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
