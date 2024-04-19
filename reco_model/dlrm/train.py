@@ -23,7 +23,7 @@ if __name__ == "__main__":
     batch_size = 64
     hidden_dim = 10
     learning_rate = 0.001
-    num_epochs = 3
+    num_epochs = 30
     # create data module
     dlrm_data = CriteoDataModule(data_path, batch_size=batch_size, hidden_dim=hidden_dim)
 
