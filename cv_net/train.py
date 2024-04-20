@@ -82,11 +82,12 @@ class CIFARModule(pl.LightningModule):
         self.log('test_acc', acc)
 
 
-def train_model(model_lookup_dict, model_name, save_name=None, **kwargs):
+def train_model(model_lookup_dict, model_name, save_name=None, pretrained_model_path=".ckpt", **kwargs):
     """
     :param model_lookup_dict: Dictionary that maps model names to model classes
     :param model_name: Name of the model you want to run. Is used to look up the class in "model_dict"
     :param save_name: If specified, this name will be used for creating the checkpoint and logging directory.
+    :param pretrained_model_path: If specified, the model will be loaded from this path if it exists.
     :param kwargs:
     :return: model, result
     """
@@ -105,7 +106,7 @@ def train_model(model_lookup_dict, model_name, save_name=None, **kwargs):
     trainer.logger._default_hp_metric = None  # Optional logging argument that we don't need
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(CHECKPOINT_PATH, save_name + ".ckpt")
+    pretrained_filename = os.path.join(CHECKPOINT_PATH, save_name + pretrained_model_path)
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
         model = CIFARModule.load_from_checkpoint(
@@ -118,9 +119,8 @@ def train_model(model_lookup_dict, model_name, save_name=None, **kwargs):
             trainer.checkpoint_callback.best_model_path)  # Load best checkpoint after training
 
     # Test best model on validation and test set
-    val_result = trainer.test(model, val_loader, verbose=False)
     test_result = trainer.test(model, test_loader, verbose=False)
-    result = {"test": test_result[0]["test_acc"], "val": val_result[0]["test_acc"]}
+    result = {"test": test_result[0]["test_acc"]}
 
     return model, result
 
@@ -143,7 +143,8 @@ if __name__ == "__main__":
     print(f"Number of training samples: {len(train_dataset)}")
     print(f"Data mean: {data_means}")
     print(f"Data std: {data_stds}")
-
+    pretrained_model_name = ".ckpt"  # the correct path should be
+    # pretrained_model_name = "/lightning_logs/version_0/checkpoints/epoch=77-step=36582.ckpt"
     # data augumentation
     test_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(data_means, data_stds)])
     train_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
@@ -170,6 +171,7 @@ if __name__ == "__main__":
     googlenet_model, googlenet_result = train_model(model_lookup_dict=model_lookup,
                                                         model_name="GoogleNet",
                                                     save_name="googlenet",
+                                                    pretrained_model_path=pretrained_model_name,
                                                     model_hparams={"num_classes": 10, "act_fn_name": "relu"},
                                                     optimizer_name="Adam",
                                                     optimizer_hparams={"lr": 1e-3, "weight_decay": 1e-4})
@@ -178,13 +180,14 @@ if __name__ == "__main__":
     model_lookup["ResNet"] = ResNet
     resnet_model, resnet_result = train_model(model_lookup_dict=model_lookup,
                                               model_name="ResNet",
-                                               model_hparams={"num_classes": 10,
+                                              model_hparams={"num_classes": 10,
                                                               "c_hidden": [16, 32, 64],
                                                               "num_blocks": [3, 3, 3],
                                                               "act_fn_name": "relu"},
                                               save_name="resnet",
-                                               optimizer_name="SGD",
-                                               optimizer_hparams={"lr": 0.1,
+                                              pretrained_model_path=pretrained_model_name,
+                                              optimizer_name="SGD",
+                                              optimizer_hparams={"lr": 0.1,
                                                                   "momentum": 0.9,
                                                                   "weight_decay": 1e-4})
     print("ResNet result:", resnet_result)
@@ -200,6 +203,7 @@ if __name__ == "__main__":
                                                                   "growth_rate": 4,
                                                                   "act_fn_name": "relu"},
                                                    save_name="densenet",
+                                                   pretrained_model_path=pretrained_model_name,
                                                    optimizer_name="Adam",
                                                    optimizer_hparams={"lr": 1e-3,
                                                                       "weight_decay": 1e-4})

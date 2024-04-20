@@ -121,7 +121,7 @@ class DLRMModule(pl.LightningModule):
         dense_features, sparse_features, labels = batch
         outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
-        self.log('train_loss', loss*1000)
+        self.log('train_loss', loss)
         preds = torch.sigmoid(outputs)
         result ={'loss': loss, 'preds': preds, 'targets': labels}
         self.training_step_outputs.append(result)
@@ -131,8 +131,8 @@ class DLRMModule(pl.LightningModule):
         dense_features, sparse_features, labels = batch
         outputs = self(dense_features, sparse_features).squeeze()
         loss = nn.BCEWithLogitsLoss()(outputs, labels.float())
-        self.log('val_loss', loss*1000)
-        self.val_loss.append(loss*1000)
+        self.log('val_loss', loss)
+        self.val_loss.append(loss)
         # Convert predictions to binary (0 or 1) using sigmoid function
         preds = torch.sigmoid(outputs)
         result ={'loss': loss, 'preds': preds, 'targets': labels}
@@ -142,7 +142,7 @@ class DLRMModule(pl.LightningModule):
         dense_features, sparse_features, labels = batch
         outputs = self(dense_features, sparse_features).squeeze()
         loss = nn.BCEWithLogitsLoss()(outputs, labels.float())
-        self.log('test_loss', loss*1000)
+        self.log('test_loss', loss)
         preds = torch.sigmoid(outputs)
         result = {'loss': loss, 'preds': preds, 'targets': labels}
         self.test_step_outputs.append(result)

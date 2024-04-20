@@ -42,7 +42,7 @@ class GenerateCallback(pl.Callback):
 
 def train_cifar(latent_dim, model_type="ae"):
     # Create a PyTorch Lightning trainer with the generation callback
-    trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, f"cifar10_{latent_dim}"),
+    trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, f"cifar10_{latent_dim}_{model_type}"),
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=1,
                          max_epochs=6,
@@ -53,7 +53,7 @@ def train_cifar(latent_dim, model_type="ae"):
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(CHECKPOINT_PATH, f"cifar10_{latent_dim}_{model_type}.ckpt")
+    pretrained_filename = os.path.join(CHECKPOINT_PATH, f"cifar10_{latent_dim}_{model_type}" + pretrained_model_name)
     if os.path.isfile(pretrained_filename):
         print("Found pretrained model, loading...")
         if model_type == "ae":
@@ -71,10 +71,10 @@ def train_cifar(latent_dim, model_type="ae"):
             raise ValueError("Unknown model type")
         trainer.fit(model, train_loader, val_loader)
     # Test best model on validation and test set
-    val_result = trainer.test(model, val_loader, verbose=False)
     test_result = trainer.test(model, test_loader, verbose=False)
-    result = {"test": test_result, "val": val_result}
-    return model, result
+    result_dict = {"test": test_result[0]}
+
+    return model, result_dict
 
 
 if __name__ == "__main__":
@@ -90,6 +90,8 @@ if __name__ == "__main__":
 
     # download dataset
     DATASET_PATH = "../data/"
+    pretrained_model_name = ".ckpt"  # the correct path should be
+    # pretrained_model_name = "/lightning_logs/version_0/checkpoints/epoch=77-step=36582.ckpt"
     # Transformations applied on each image => only make them a tensor
     transform = transforms.Compose([transforms.ToTensor(),
                                     transforms.Normalize((0.5,), (0.5,))])

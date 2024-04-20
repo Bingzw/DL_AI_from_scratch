@@ -162,7 +162,7 @@ def create_multiscale_flow():
     return flow_model
 
 
-def train_flow(flow, model_name="MNISTFlow"):
+def train_flow(flow, model_name="MNISTFlow", pretrained_model_path=".ckpt"):
     # Create a PyTorch Lightning trainer
     trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, model_name),
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
@@ -180,7 +180,7 @@ def train_flow(flow, model_name="MNISTFlow"):
     result = None
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(CHECKPOINT_PATH, model_name + ".ckpt")
+    pretrained_filename = os.path.join(CHECKPOINT_PATH, model_name + pretrained_model_path)
     if os.path.isfile(pretrained_filename):
         print("Found pretrained model, loading...")
         ckpt = torch.load(pretrained_filename, map_location=device)
@@ -215,6 +215,8 @@ if __name__ == "__main__":
 
     # download dataset
     DATASET_PATH = "../data/"
+    pretrained_model_name = ".ckpt"  # the correct path should be
+    # pretrained_model_name = "/lightning_logs/version_0/checkpoints/epoch=77-step=36582.ckpt"
     # Transformations applied on each image => make them a tensor and discretize
     transform = transforms.Compose([transforms.ToTensor(),
                                     discretize])
@@ -236,11 +238,14 @@ if __name__ == "__main__":
 
     flow_dict = {"simple": {}, "vardeq": {}, "multiscale": {}}
     flow_dict["simple"]["model"], flow_dict["simple"]["result"] = train_flow(create_simple_flow(use_vardeq=False),
-                                                                             model_name="MNISTFlow_simple")
+                                                                             model_name="MNISTFlow_simple",
+                                                                             pretrained_model_path=pretrained_model_name)
     flow_dict["vardeq"]["model"], flow_dict["vardeq"]["result"] = train_flow(create_simple_flow(use_vardeq=True),
-                                                                             model_name="MNISTFlow_vardeq")
+                                                                             model_name="MNISTFlow_vardeq",
+                                                                             pretrained_model_path=pretrained_model_name)
     flow_dict["multiscale"]["model"], flow_dict["multiscale"]["result"] = train_flow(create_multiscale_flow(),
-                                                                                     model_name="MNISTFlow_multiscale")
+                                                                                     model_name="MNISTFlow_multiscale",
+                                                                                     pretrained_model_path=pretrained_model_name)
 
     # sample from the flow
     pl.seed_everything(44)

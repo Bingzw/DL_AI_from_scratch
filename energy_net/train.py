@@ -89,6 +89,8 @@ if __name__ == "__main__":
 
     # download dataset
     DATASET_PATH = "../data/"
+    pretrained_model_name = ".ckpt"  # the correct path should be
+    # pretrained_model_name = "/lightning_logs/version_0/checkpoints/epoch=77-step=36582.ckpt"
     # Transformations applied on each image => make them a tensor and normalize between -1 and 1
     transform = transforms.Compose([transforms.ToTensor(),
                                     transforms.Normalize((0.5,), (0.5,))
@@ -121,7 +123,7 @@ if __name__ == "__main__":
                          )
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(CHECKPOINT_PATH, "MNIST.ckpt")
+    pretrained_filename = os.path.join(CHECKPOINT_PATH, "MNIST" + pretrained_model_name)
     if os.path.isfile(pretrained_filename):
         print("Found pretrained model, loading...")
         model = DeepEnergyModel.load_from_checkpoint(pretrained_filename)
