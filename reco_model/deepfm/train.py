@@ -20,7 +20,7 @@ if __name__ == "__main__":
     data_path = "../../data/reco_data/sampled_criteo_data.txt"
 
     # set hyperparameters
-    batch_size = 1024
+    batch_size = 512
     hidden_dim = 10
     learning_rate = 0.0001
     num_epochs = 100
