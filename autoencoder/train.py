@@ -79,7 +79,7 @@ def train_cifar(latent_dim, model_type="ae"):
 
 if __name__ == "__main__":
     SEED = 42
-    CHECKPOINT_PATH = "../saved_models/energy_net"
+    CHECKPOINT_PATH = "../saved_models/autoencoder"
     # set seed
     set_seed(SEED)
     torch.backends.cudnn.deterministic = True
