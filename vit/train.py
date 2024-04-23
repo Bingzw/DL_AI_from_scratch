@@ -1,24 +1,10 @@
 import os
-import numpy as np
-import random
-import math
-import json
-from functools import partial
-from PIL import Image
-
-## tqdm for loading bars
-from tqdm import tqdm
 
 ## PyTorch
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.data as data
-import torch.optim as optim
-import matplotlib.pyplot as plt
 
 ## Torchvision
-import torchvision
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
 
@@ -28,7 +14,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 # ViT Model
 from vit.vitnet import ViT
-from vit.util import img_to_patch
 
 
 def train_model(num_epochs, pretrained_filename, **kwargs):
