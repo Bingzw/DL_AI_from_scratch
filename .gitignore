@@ -164,6 +164,7 @@ pyvenv.cfg
 /bin/
 /data/cifar-10-batches-py/
 /data/MNIST/
+/data/stl10_binary/
 /share/
 /saved_models/
 /reco_model/logs/
