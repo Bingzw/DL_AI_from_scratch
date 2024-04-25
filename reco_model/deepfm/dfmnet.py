@@ -29,7 +29,7 @@ class DeepFMNet(nn.Module):
         embedding dimension
         """
         super().__init__()
-        self.dense_features = num_dense_features
+        self.num_dense_features = num_dense_features
 
         # Embedding layers for categorical features
         self.embedding_layers = nn.ModuleList(
@@ -41,7 +41,7 @@ class DeepFMNet(nn.Module):
 
         # MLP layer for the concated dense and sparse outputs
         mlp_layers = []
-        mlp_layers.append(nn.Linear(self.dense_features + self.embedding_output_dim, mlp_dims[0]))
+        mlp_layers.append(nn.Linear(self.num_dense_features + self.embedding_output_dim, mlp_dims[0]))
         mlp_layers.append(nn.ReLU())
         for i in range(1, len(mlp_dims)):
             mlp_layers.append(nn.Linear(mlp_dims[i - 1], mlp_dims[i]))
@@ -100,8 +100,7 @@ class DeepFMModule(pl.LightningModule):
         outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
         self.log('train_loss', loss)
-        preds = torch.sigmoid(outputs)
-        result ={'loss': loss, 'preds': preds, 'targets': labels}
+        result ={'loss': loss, 'preds': outputs, 'targets': labels}
         self.training_step_outputs.append(result)
         return loss
 
@@ -111,9 +110,7 @@ class DeepFMModule(pl.LightningModule):
         loss = self.loss(outputs, labels.float())
         self.log('val_loss', loss)
         self.val_loss.append(loss)
-        # Convert predictions to binary (0 or 1) using sigmoid function
-        preds = torch.sigmoid(outputs)
-        result ={'loss': loss, 'preds': preds, 'targets': labels}
+        result ={'loss': loss, 'preds': outputs, 'targets': labels}
         self.validation_step_outputs.append(result)
 
     def test_step(self, batch, batch_idx):
@@ -121,8 +118,7 @@ class DeepFMModule(pl.LightningModule):
         outputs = self(dense_features, sparse_features).squeeze()
         loss = self.loss(outputs, labels.float())
         self.log('test_loss', loss)
-        preds = torch.sigmoid(outputs)
-        result = {'loss': loss, 'preds': preds, 'targets': labels}
+        result = {'loss': loss, 'preds': outputs, 'targets': labels}
         self.test_step_outputs.append(result)
 
     def on_train_epoch_end(self):
