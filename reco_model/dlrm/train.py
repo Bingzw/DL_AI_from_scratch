@@ -54,25 +54,13 @@ if __name__ == "__main__":
     pretrained_filename = os.path.join(CHECKPOINT_PATH, save_directory_name + pretrained_model_name)
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
-        model = DLRMModule.load_from_checkpoint(
-            pretrained_filename,
-            num_dense_features=num_dense_features,
-            embedding_sizes=embedding_sizes,
-            bottom_mlp_dims=bottom_mlp_dims,
-            top_mlp_dims=top_mlp_dims
-        )  # Automatically loads the model with the saved hyperparameters
+        model = DLRMModule.load_from_checkpoint(pretrained_filename)  # Automatically loads the model with the saved hyperparameters
     else:
         pl.seed_everything(SEED)  # To be reproducable
         model = DLRMModule(num_dense_features=num_dense_features, embedding_sizes=embedding_sizes,
                            bottom_mlp_dims=bottom_mlp_dims, top_mlp_dims=top_mlp_dims, lr=learning_rate)
         trainer.fit(model, train_loader, val_loader)
-        model = DLRMModule.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path,
-            num_dense_features=num_dense_features,
-            embedding_sizes=embedding_sizes,
-            bottom_mlp_dims=bottom_mlp_dims,
-            top_mlp_dims=top_mlp_dims
-        )  # Load best checkpoint after training
+        model = DLRMModule.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)  # Load best checkpoint after training
 
     # Test best model on validation and test set
     # Test best model on validation and test set
