@@ -107,8 +107,10 @@ class MMOEModule(pl.LightningModule):
         :param lr: the learning rate
         """
         super().__init__()
+        self.save_hyperparameters()
         self.model = MMOENet(num_dense_features, sparse_cardinality, hidden_dim, expert_mlp_dims, tower_mlp_dims,
                              num_tasks, num_experts, dropout)
+        self.num_tasks = num_tasks
         self.lr = lr
         self.loss = nn.BCELoss() # binary cross-entropy loss
         self.training_step_outputs = []
@@ -121,8 +123,8 @@ class MMOEModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
-        outputs = self(dense_features, sparse_features).squeeze()
-        loss_list = [self.loss(outputs, labels[:, i].float()) for i in range(labels.size(1))]
+        outputs = self(dense_features, sparse_features)
+        loss_list = [self.loss(outputs[i], labels[:, i].float()) for i in range(labels.size(1))]
         loss = sum(loss_list)
         loss = loss / len(loss_list)
         self.log('train_loss', loss)
@@ -132,8 +134,8 @@ class MMOEModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
-        outputs = self(dense_features, sparse_features).squeeze()
-        loss_list = [self.loss(outputs, labels[:, i].float()) for i in range(labels.size(1))]
+        outputs = self(dense_features, sparse_features)
+        loss_list = [self.loss(outputs[i], labels[:, i].float()) for i in range(labels.size(1))]
         loss = sum(loss_list)
         loss = loss / len(loss_list)
         self.log('val_loss', loss)
@@ -143,8 +145,8 @@ class MMOEModule(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         dense_features, sparse_features, labels = batch
-        outputs = self(dense_features, sparse_features).squeeze()
-        loss_list = [self.loss(outputs, labels[:, i].float()) for i in range(labels.size(1))]
+        outputs = self(dense_features, sparse_features)
+        loss_list = [self.loss(outputs[i], labels[:, i].float()) for i in range(labels.size(1))]
         loss = sum(loss_list)
         loss = loss / len(loss_list)
         self.log('test_loss', loss)
