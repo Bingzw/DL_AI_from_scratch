@@ -106,6 +106,7 @@ class DLRMModule(pl.LightningModule):
         :param lr: the learning rate
         """
         super(DLRMModule, self).__init__()
+        self.save_hyperparameters()
         self.model = DLRMNet(num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims)
         self.lr = lr
         self.loss = nn.BCEWithLogitsLoss()

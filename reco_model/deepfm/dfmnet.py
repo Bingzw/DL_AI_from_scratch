@@ -84,6 +84,7 @@ class DeepFMModule(pl.LightningModule):
         :param lr: the learning rate
         """
         super().__init__()
+        self.save_hyperparameters()
         self.model = DeepFMNet(num_dense_features, embedding_sizes, mlp_dims)
         self.lr = lr
         self.loss = nn.BCELoss()  # apply BCELOSS since we have applied sigmoid in deepfm net

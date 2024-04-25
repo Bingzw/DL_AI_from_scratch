@@ -34,8 +34,7 @@ if __name__ == "__main__":
     tower_mlp_dims = [64, 32]
 
     # create data module
-    mmoe_data = CensusDataModule(train_path=raw_train_data_path, test_path=raw_test_data_path, batch_size=batch_size,
-                                 hidden_dim=hidden_dim)
+    mmoe_data = CensusDataModule(train_path=raw_train_data_path, test_path=raw_test_data_path, batch_size=batch_size)
     num_dense_features = mmoe_data.dataset.dense_features.shape[1]
     sparse_cardinality = mmoe_data.sparse_cardinality
     # create data loader
