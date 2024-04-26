@@ -97,18 +97,19 @@ class DLRMNet(nn.Module):
 
 
 class DLRMModule(pl.LightningModule):
-    def __init__(self, num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims, lr=1e-3):
+    def __init__(self, config, embedding_sizes, num_dense_features):
         """
-        :param num_dense_features: the number of numerical features
-        :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
-        :param bottom_mlp_dims: the dimensions of the bottom MLP
-        :param top_mlp_dims: the dimensions of the top MLP
-        :param lr: the learning rate
+        :param config: a dictionary containing the configuration parameters, including: num_dense_features,
+        embedding_sizes, bottom_mlp_dims, top_mlp_dims, and lr
         """
         super(DLRMModule, self).__init__()
         self.save_hyperparameters()
-        self.model = DLRMNet(num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims)
-        self.lr = lr
+        self.num_dense_features = num_dense_features
+        self.embedding_sizes = embedding_sizes
+        self.bottom_mlp_dims = config["bottom_mlp_dims"]
+        self.top_mlp_dims = config["top_mlp_dims"]
+        self.lr = config["lr"]
+        self.model = DLRMNet(self.num_dense_features, self.embedding_sizes, self.bottom_mlp_dims, self.top_mlp_dims)
         self.loss = nn.BCEWithLogitsLoss()
         self.training_step_outputs = []
         self.validation_step_outputs = []
