@@ -2,18 +2,46 @@ import torch
 import os
 # lighting
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Callback
 # ray
 from ray import train, tune
-from ray.tune import CLIReporter
+from ray.train import Checkpoint
 from ray.tune.schedulers import ASHAScheduler
-
+from ray.train import ScalingConfig
+from ray.train.torch import TorchTrainer
 # model
 from reco_model.criteo_data import CriteoDataModule
 from dlrmnet import DLRMModule
 
 
-def train_dlrm(config):
+class MetricsCallback(pl.Callback):
+    """
+    stores the trainer.callback_metrics dictionary at the end of each validation epoch,
+    wait for the validation epoch to complete before reporting the metrics
+    """
+    def __init__(self):
+        super().__init__()
+        self.metrics = {}
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        self.metrics = trainer.callback_metrics
+
+
+class EarlyStoppingOnAucDifference(Callback):
+    def __init__(self, threshold):
+        super().__init__()
+        self.threshold = threshold
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+        if 'train_auc' in metrics and 'val_auc' in metrics:
+            train_auc = metrics['train_auc']
+            val_auc = metrics['val_auc']
+            if train_auc - val_auc > self.threshold:
+                trainer.should_stop = True
+
+
+def train_dlrm_per_worker(config):
     # create data module
     dlrm_data = CriteoDataModule(data_path, batch_size=config["batch_size"], hidden_dim=config["hidden_dim"])
     num_dense_features = dlrm_data.dataset.dense_features.shape[1]
@@ -24,27 +52,40 @@ def train_dlrm(config):
     val_loader = dlrm_data.val_dataloader()
     test_loader = dlrm_data.test_dataloader()
 
+    metrics_callback = MetricsCallback()
     trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_directory_name),  # Where to save models
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          # We run on a GPU (if possible)
                          devices=1,  # How many GPUs/CPUs we want to use
                          max_epochs=config["num_epochs"],  # How many epochs to train for if no patience is set
-                         callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_auc"),
+                         callbacks=[metrics_callback,
+                                    EarlyStoppingOnAucDifference(threshold=0.1),
+                                    ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_auc", save_top_k=1),
                                     # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                                     LearningRateMonitor("epoch")],
                          enable_progress_bar=True)
 
     model = DLRMModule(config=config, embedding_sizes=embedding_sizes, num_dense_features=num_dense_features)
     trainer.fit(model, train_loader, val_loader)
-    model = DLRMModule.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)  # Load best checkpoint after training
     # Test best model on validation and test set
     test_result = trainer.test(model, test_loader, verbose=False)
     print("Best model checkpoint path:", trainer.checkpoint_callback.best_model_path)
-    train.report({"test_auc": test_result[0]['test_auc']})
+    best_model_directory = os.path.dirname(trainer.checkpoint_callback.best_model_path)
+    checkpoint = Checkpoint(path=best_model_directory)  #
+    train.report(metrics={"train_auc": metrics_callback.metrics['train_auc'].item(),
+                          "val_auc": metrics_callback.metrics['val_auc'].item(),
+                          "test_auc": test_result[0]['test_auc'],
+                          "best_checkpoint": trainer.checkpoint_callback.best_model_path},
+                 checkpoint=checkpoint)
+    # note that the model save path is specified as default_root_dir in the pl.Trainer and I also set the best model
+    # directory as the checkpoint and pass this to train.report. This would also save the models in the best model
+    # directory to the checkpoint path specified by ray results. However, we would not able to know which step is
+    # optimal since ray only knows the best hyperparameter but does not know which step version is the optimal for the
+    # given hyperparameter. So I save the best model path in the metrics to fast load the best model later
 
 
 if __name__ == "__main__":
-    # Set seedtune
+    # Set seed
     SEED = 42
     CHECKPOINT_PATH = "/Users/bwang7/ebay/bing_github/DL_genAI_practicing/saved_models/reco_models"
     torch.backends.cudnn.deterministic = True
@@ -57,12 +98,13 @@ if __name__ == "__main__":
     pl.seed_everything(SEED)  # To be reproducable
     # set hyperparameters
     hyper_config = {
-        "batch_size": tune.choice([64, 128, 256, 512]),
-        "hidden_dim": tune.choice([4, 8, 16]),
-        "lr": tune.loguniform(1e-4, 1e-2),
-        "num_epochs": tune.choice([100, 200, 300]),
-        "bottom_mlp_dims": tune.choice([[64, 32], [32, 16], [64, 32, 16], [32, 16, 8]]),
-        "top_mlp_dims": tune.choice([[64, 32], [32, 16], [64, 32, 16], [32, 16, 8]])
+        "batch_size": tune.choice([512, 1024]),
+        "hidden_dim": tune.choice([8, 16]),
+        "lr": tune.loguniform(1e-4, 1e-3),
+        "num_epochs": tune.choice([50, 100]),
+        "bottom_mlp_dims": tune.choice([[64, 32], [32, 16]]),
+        "top_mlp_dims": tune.choice([[64, 32], [32, 16]]),
+        "dropout_rate": tune.uniform(0.1, 0.8),
     }
 
     # Define scheduler and reporter
@@ -83,35 +125,43 @@ if __name__ == "__main__":
     So, even though only one hyperparameter set is sampled in each iteration, the scheduler makes its decisions based 
     on the performance of all trials that have been run so far.
     """
-    scheduler = ASHAScheduler(metric="test_auc", mode="max",
-                              max_t=10,  # the maximum time units to be run (epochs in this case)
+    scheduler = ASHAScheduler(max_t=5,  # the maximum time units to be run (epochs in this case)
                               grace_period=1,  # the minimum time units to be run (epochs in this case)
                               reduction_factor=2)  # the halving rate, each round, only the top 1/reduction_factor runs
-    # are considered
-    reporter = CLIReporter(
-        metric_columns=["test_auc", "training_iteration"])
 
-    result = tune.run(
-        train_dlrm,
-        resources_per_trial={"cpu": 1, "gpu": 0},
-        config=hyper_config,
-        num_samples=10,
-        scheduler=scheduler,
-        progress_reporter=reporter)
+    scaling_config = ScalingConfig(
+        num_workers=1, use_gpu=False, resources_per_worker={"CPU": 1, "GPU": 0}
+    )
 
+    ray_trainer = TorchTrainer(
+        train_dlrm_per_worker,
+        scaling_config=scaling_config
+    )
+
+    tuner = tune.Tuner(
+        ray_trainer,
+        param_space={"train_loop_config": hyper_config},
+        tune_config=tune.TuneConfig(
+            metric="val_auc",
+            mode="max",
+            num_samples=2,
+            scheduler=scheduler,
+        ),
+    )
+
+    # Save the mapping between the hyperparameters and the best checkpoint
+    result = tuner.fit()
     # Get the best trial
-    best_trial = result.get_best_trial("test_auc", "max", "last")
+    best_result = result.get_best_result("val_auc", "max", "all")
+    print("best_trial: ", best_result)
     # Get the best hyperparameters
-    best_hyperparameters = best_trial.config
+    best_hyperparameters = best_result.config
     # Print the best hyperparameters
     print("Best trial hyperparameters:", best_hyperparameters)
-    # Get the path to the checkpoint of the best model
-    best_model_checkpoint = best_trial.checkpoint.value
-    # Get the performance of the best model
-    best_model_performance = best_trial.last_result["test_auc"]
-    # Print the path to the checkpoint and the performance of the best model
-    print("Best model checkpoint path:", best_model_checkpoint)
-    print("Best model performance (test_auc):", best_model_performance)
+    # get the best performance
+    best_performance = best_result.metrics
+    print("best_performance: ", best_performance)
+
     # run this in terminal to check logs: tensorboard --logdir saved_models/reco_models/dlrmnet/lightning_logs
 
 
