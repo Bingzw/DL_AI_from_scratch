@@ -31,7 +31,7 @@ class FeatureInteraction(nn.Module):
 
 
 class DLRMNet(nn.Module):
-    def __init__(self, num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims):
+    def __init__(self, num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims, dropout_rate=0.1):
         """
         :param num_dense_features: the number of numerical features
         :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
@@ -53,12 +53,14 @@ class DLRMNet(nn.Module):
         for i in range(1, len(bottom_mlp_dims)):
             bottom_layers.append(nn.Linear(bottom_mlp_dims[i - 1], bottom_mlp_dims[i]))
             bottom_layers.append(nn.ReLU())
+            bottom_layers.append(nn.Dropout(dropout_rate))
         self.bottom_mlp = nn.Sequential(*bottom_layers)
 
         # Interaction layer
         self.interaction_input_dim = bottom_mlp_dims[-1] + self.embedding_output_dim
         self.interaction_output_dim = (self.interaction_input_dim + 1) * self.interaction_input_dim // 2
         self.interaction_layer = FeatureInteraction()
+        self.interaction_dropout = nn.Dropout(dropout_rate)
 
         # Top MLP
         top_layers = []
@@ -67,6 +69,7 @@ class DLRMNet(nn.Module):
         for i in range(1, len(top_mlp_dims)):
             top_layers.append(nn.Linear(top_mlp_dims[i - 1], top_mlp_dims[i]))
             top_layers.append(nn.ReLU())
+            top_layers.append(nn.Dropout(dropout_rate))
         top_layers.append(nn.Linear(top_mlp_dims[-1], 1))
         self.top_mlp = nn.Sequential(*top_layers)
 
@@ -86,6 +89,7 @@ class DLRMNet(nn.Module):
 
         # Interaction layer: element-wise product between embeddings and bottom MLP output
         interaction = self.interaction_layer(torch.cat([dense_output, embeddings], dim=1))
+        interaction = self.interaction_dropout(interaction)
 
         # Concatenate bottom MLP output, embeddings, and interactions
         x = torch.cat([dense_output, interaction], dim=1)
@@ -97,18 +101,21 @@ class DLRMNet(nn.Module):
 
 
 class DLRMModule(pl.LightningModule):
-    def __init__(self, num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims, lr=1e-3):
+    def __init__(self, config, embedding_sizes, num_dense_features):
         """
-        :param num_dense_features: the number of numerical features
-        :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
-        :param bottom_mlp_dims: the dimensions of the bottom MLP
-        :param top_mlp_dims: the dimensions of the top MLP
-        :param lr: the learning rate
+        :param config: a dictionary containing the configuration parameters, including: num_dense_features,
+        embedding_sizes, bottom_mlp_dims, top_mlp_dims, and lr
         """
         super(DLRMModule, self).__init__()
         self.save_hyperparameters()
-        self.model = DLRMNet(num_dense_features, embedding_sizes, bottom_mlp_dims, top_mlp_dims)
-        self.lr = lr
+        self.num_dense_features = num_dense_features
+        self.embedding_sizes = embedding_sizes
+        self.bottom_mlp_dims = config["bottom_mlp_dims"]
+        self.top_mlp_dims = config["top_mlp_dims"]
+        self.lr = config["lr"]
+        self.dropout_rate = config["dropout_rate"]
+        self.model = DLRMNet(self.num_dense_features, self.embedding_sizes, self.bottom_mlp_dims, self.top_mlp_dims,
+                             self.dropout_rate)
         self.loss = nn.BCEWithLogitsLoss()
         self.training_step_outputs = []
         self.validation_step_outputs = []

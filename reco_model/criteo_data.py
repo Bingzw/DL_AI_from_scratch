@@ -72,10 +72,13 @@ class CriteoDataModule(pl.LightningDataModule):
         self.train_data, self.val_data, self.test_data = random_split(self.dataset, [train_size, val_size, test_size])
 
     def train_dataloader(self):
-        return DataLoader(self.train_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        return DataLoader(self.train_data, batch_size=self.batch_size, shuffle=self.shuffle, persistent_workers=True,
+                          num_workers=2)
 
     def val_dataloader(self):
-        return DataLoader(self.val_data, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(self.val_data, batch_size=self.batch_size, shuffle=False, persistent_workers=True,
+                          num_workers=2)
 
     def test_dataloader(self):
-        return DataLoader(self.test_data, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(self.test_data, batch_size=self.batch_size, shuffle=False, persistent_workers=True,
+                          num_workers=2)
