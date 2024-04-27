@@ -144,7 +144,7 @@ if __name__ == "__main__":
         tune_config=tune.TuneConfig(
             metric="val_auc",
             mode="max",
-            num_samples=2,
+            num_samples=10,
             scheduler=scheduler,
         ),
     )
