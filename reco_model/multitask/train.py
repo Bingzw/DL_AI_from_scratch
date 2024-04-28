@@ -26,7 +26,7 @@ if __name__ == "__main__":
     batch_size = 1024
     hidden_dim = 10
     learning_rate = 0.0001
-    num_epochs = 2
+    num_epochs = 10
     num_tasks = 2
     num_experts = 3
     dropout = 0.1
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         # Load best checkpoint after training
 
     # Test best model on validation and test set
-    # Test best model on validation and test set
     test_result = trainer.test(model, test_loader, verbose=False)
     print("Best model checkpoint path:", trainer.checkpoint_callback.best_model_path)
     print("test_result: ", test_result[0])
+    # without much tuning, the auc for task income is 0.91 and for task education is 0.99
