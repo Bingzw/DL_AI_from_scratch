@@ -22,7 +22,7 @@ class FactorizationMachine(nn.Module):
 
 
 class DeepFMNet(nn.Module):
-    def __init__(self, num_dense_features, embedding_sizes, mlp_dims):
+    def __init__(self, num_dense_features, embedding_sizes, mlp_dims, dropout_rate=0.1):
         """
         :param num_dense_features: the number of numerical features
         :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the
@@ -36,8 +36,13 @@ class DeepFMNet(nn.Module):
             [nn.Embedding(num_categories, embedding_dim) for num_categories, embedding_dim in embedding_sizes])
         self.embedding_output_dim = sum([embedding_dim for _, embedding_dim in embedding_sizes])
 
+        # Initialize the weights of the embedding layers
+        for embedding_layer in self.embedding_layers:
+            nn.init.normal_(embedding_layer.weight, mean=0, std=0.1)
+
         # Factorization Machine layer
         self.fm = FactorizationMachine()
+        self.fm_dropout = nn.Dropout(dropout_rate)
 
         # MLP layer for the concated dense and sparse outputs
         mlp_layers = []
@@ -45,9 +50,17 @@ class DeepFMNet(nn.Module):
         mlp_layers.append(nn.ReLU())
         for i in range(1, len(mlp_dims)):
             mlp_layers.append(nn.Linear(mlp_dims[i - 1], mlp_dims[i]))
+            mlp_layers.append(nn.BatchNorm1d(mlp_dims[i]))
             mlp_layers.append(nn.ReLU())
+            mlp_layers.append(nn.Dropout(dropout_rate))
         mlp_layers.append(nn.Linear(mlp_dims[-1], 1))
         self.mlp = nn.Sequential(*mlp_layers)
+
+        # Initialize the weights of the top MLP layers
+        for mlp_layer in self.mlp_layers:
+            if isinstance(mlp_layer, nn.Linear):
+                nn.init.kaiming_normal_(mlp_layer.weight)
+                nn.init.zeros_(mlp_layer.bias)
 
     def forward(self, dense_features, sparse_features):
         """
@@ -65,6 +78,7 @@ class DeepFMNet(nn.Module):
 
         # Factorization Machine
         x_fm = self.fm(x)
+        x_fm = self.fm_dropout(x_fm)
 
         # Pass through MLP
         x_mlp = self.mlp(x)
@@ -76,7 +90,7 @@ class DeepFMNet(nn.Module):
 
 
 class DeepFMModule(pl.LightningModule):
-    def __init__(self, num_dense_features, embedding_sizes, mlp_dims, lr=1e-3):
+    def __init__(self, num_dense_features, embedding_sizes, mlp_dims, lr=1e-3, dropout_rate=0.1):
         """
         :param num_dense_features: the number of numerical features
         :param embedding_sizes: a list of tuples where each tuple contains the number of categories and the embedding
@@ -85,7 +99,7 @@ class DeepFMModule(pl.LightningModule):
         """
         super().__init__()
         self.save_hyperparameters()
-        self.model = DeepFMNet(num_dense_features, embedding_sizes, mlp_dims)
+        self.model = DeepFMNet(num_dense_features, embedding_sizes, mlp_dims, dropout_rate)
         self.lr = lr
         self.loss = nn.BCELoss()  # apply BCELOSS since we have applied sigmoid in deepfm net
         self.training_step_outputs = []
