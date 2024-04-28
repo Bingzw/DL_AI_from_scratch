@@ -3,6 +3,7 @@ import os
 # lighting
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Callback
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 # ray
 from ray import train, tune
 from ray.train import Checkpoint
@@ -27,17 +28,16 @@ class MetricsCallback(pl.Callback):
         self.metrics = trainer.callback_metrics
 
 
-class EarlyStoppingOnAucDifference(Callback):
+class EarlyStoppingOnAucDifference(pl.Callback):
     def __init__(self, threshold):
         super().__init__()
         self.threshold = threshold
 
-    def on_validation_epoch_end(self, trainer, pl_module):
+    def on_validation_end(self, trainer, pl_module):
         metrics = trainer.callback_metrics
         if 'train_auc' in metrics and 'val_auc' in metrics:
-            train_auc = metrics['train_auc']
-            val_auc = metrics['val_auc']
-            if train_auc - val_auc > self.threshold:
+            auc_diff = metrics['train_auc'] - metrics['val_auc']
+            if auc_diff > self.threshold:
                 trainer.should_stop = True
 
 
@@ -57,9 +57,9 @@ def train_dlrm_per_worker(config):
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          # We run on a GPU (if possible)
                          devices=1,  # How many GPUs/CPUs we want to use
-                         max_epochs=config["num_epochs"],  # How many epochs to train for if no patience is set
+                         max_epochs=config["max_epochs"],  # How many epochs to train for if no patience is set,
                          callbacks=[metrics_callback,
-                                    EarlyStoppingOnAucDifference(threshold=0.1),
+                                    EarlyStoppingOnAucDifference(threshold=0.05),
                                     ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_auc", save_top_k=1),
                                     # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                                     LearningRateMonitor("epoch")],
@@ -98,13 +98,13 @@ if __name__ == "__main__":
     pl.seed_everything(SEED)  # To be reproducable
     # set hyperparameters
     hyper_config = {
-        "batch_size": tune.choice([512, 1024]),
-        "hidden_dim": tune.choice([8, 16]),
-        "lr": tune.loguniform(1e-4, 1e-3),
-        "num_epochs": tune.choice([50, 100]),
-        "bottom_mlp_dims": tune.choice([[64, 32], [32, 16]]),
-        "top_mlp_dims": tune.choice([[64, 32], [32, 16]]),
-        "dropout_rate": tune.uniform(0.1, 0.8),
+        "batch_size": tune.choice([64, 128]),
+        "hidden_dim": tune.choice([4, 6]),
+        "lr": tune.loguniform(1e-5, 1e-3),
+        "max_epochs": tune.choice([100, 200]),
+        "bottom_mlp_dims": tune.choice([[16, 8], [8, 8, 4]]),
+        "top_mlp_dims": tune.choice([[16, 8], [8, 8, 4]]),
+        "dropout_rate": tune.uniform(0.3, 0.8),
     }
 
     # Define scheduler and reporter
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     So, even though only one hyperparameter set is sampled in each iteration, the scheduler makes its decisions based 
     on the performance of all trials that have been run so far.
     """
-    scheduler = ASHAScheduler(max_t=5,  # the maximum time units to be run (epochs in this case)
+    scheduler = ASHAScheduler(max_t=10,  # the maximum time units to be run (epochs in this case)
                               grace_period=1,  # the minimum time units to be run (epochs in this case)
                               reduction_factor=2)  # the halving rate, each round, only the top 1/reduction_factor runs
 
@@ -163,6 +163,7 @@ if __name__ == "__main__":
     print("best_performance: ", best_performance)
 
     # run this in terminal to check logs: tensorboard --logdir saved_models/reco_models/dlrmnet/lightning_logs
+    # the best test AUC so far is 0.73
 
 
 

@@ -24,6 +24,7 @@ if __name__ == "__main__":
     hidden_dim = 10
     learning_rate = 0.0001
     num_epochs = 100
+    dropout_rate = 0.1
     # create data module
     criteo_data = CriteoDataModule(data_path, batch_size=batch_size, hidden_dim=hidden_dim)
     print(criteo_data.dataset.features.head())

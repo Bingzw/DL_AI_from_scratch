@@ -46,15 +46,27 @@ class DLRMNet(nn.Module):
             [nn.Embedding(num_categories, embedding_dim) for num_categories, embedding_dim in embedding_sizes])
         self.embedding_output_dim = sum([embedding_dim for _, embedding_dim in embedding_sizes])
 
+        # Initialize the weights of the embedding layers
+        for embedding_layer in self.embedding_layers:
+            nn.init.normal_(embedding_layer.weight, mean=0, std=0.1)
+
         # Bottom MLP
         bottom_layers = []
         bottom_layers.append(nn.Linear(num_dense_features, bottom_mlp_dims[0]))
+        bottom_layers.append(nn.BatchNorm1d(bottom_mlp_dims[0]))
         bottom_layers.append(nn.ReLU())
         for i in range(1, len(bottom_mlp_dims)):
             bottom_layers.append(nn.Linear(bottom_mlp_dims[i - 1], bottom_mlp_dims[i]))
+            bottom_layers.append(nn.BatchNorm1d(bottom_mlp_dims[i]))
             bottom_layers.append(nn.ReLU())
             bottom_layers.append(nn.Dropout(dropout_rate))
         self.bottom_mlp = nn.Sequential(*bottom_layers)
+
+        # Initialize the weights of the bottom MLP layers
+        for mlp_layer in self.bottom_mlp:
+            if isinstance(mlp_layer, nn.Linear):
+                nn.init.kaiming_normal_(mlp_layer.weight)
+                nn.init.zeros_(mlp_layer.bias)
 
         # Interaction layer
         self.interaction_input_dim = bottom_mlp_dims[-1] + self.embedding_output_dim
@@ -65,13 +77,21 @@ class DLRMNet(nn.Module):
         # Top MLP
         top_layers = []
         top_layers.append(nn.Linear(bottom_mlp_dims[-1] + self.interaction_output_dim, top_mlp_dims[0]))
+        top_layers.append(nn.BatchNorm1d(top_mlp_dims[0]))
         top_layers.append(nn.ReLU())
         for i in range(1, len(top_mlp_dims)):
             top_layers.append(nn.Linear(top_mlp_dims[i - 1], top_mlp_dims[i]))
+            top_layers.append(nn.BatchNorm1d(top_mlp_dims[i]))
             top_layers.append(nn.ReLU())
             top_layers.append(nn.Dropout(dropout_rate))
         top_layers.append(nn.Linear(top_mlp_dims[-1], 1))
         self.top_mlp = nn.Sequential(*top_layers)
+
+        # Initialize the weights of the top MLP layers
+        for mlp_layer in self.top_mlp:
+            if isinstance(mlp_layer, nn.Linear):
+                nn.init.kaiming_normal_(mlp_layer.weight)
+                nn.init.zeros_(mlp_layer.bias)
 
     def forward(self, dense_features, sparse_features):
         """
@@ -163,15 +183,15 @@ class DLRMModule(pl.LightningModule):
         # Calculate accuracy
         correct = (binary_preds == targets).sum().item()
         acc = correct / len(targets)
-        self.log('train_acc', acc, prog_bar=True)
+        self.log('train_acc', acc, prog_bar=True, sync_dist=True)
         auc = roc_auc_score(targets, preds)
-        self.log('train_auc', auc, prog_bar=True)
+        self.log('train_auc', auc, prog_bar=True, sync_dist=True)
         f1 = f1_score(targets, binary_preds)
-        self.log('train_f1', f1, prog_bar=True)
-        precision = precision_score(targets, binary_preds)
-        self.log('train_precision', precision, prog_bar=True)
+        self.log('train_f1', f1, prog_bar=True, sync_dist=True)
+        precision = precision_score(targets, binary_preds, zero_division=0)
+        self.log('train_precision', precision, prog_bar=True, sync_dist=True)
         recall = recall_score(targets, binary_preds)
-        self.log('train_recall', recall, prog_bar=True)
+        self.log('train_recall', recall, prog_bar=True, sync_dist=True)
         self.training_step_outputs.clear()  # free memory
 
     def on_validation_epoch_end(self):
@@ -182,15 +202,15 @@ class DLRMModule(pl.LightningModule):
         # Calculate accuracy
         correct = (binary_preds == targets).sum().item()
         acc = correct / len(targets)
-        self.log('val_acc', acc, prog_bar=True)
+        self.log('val_acc', acc, prog_bar=True, sync_dist=True)
         auc = roc_auc_score(targets, preds)
-        self.log('val_auc', auc, prog_bar=True)
+        self.log('val_auc', auc, prog_bar=True, sync_dist=True)
         f1 = f1_score(targets, binary_preds)
-        self.log('val_f1', f1, prog_bar=True)
-        precision = precision_score(targets, binary_preds)
-        self.log('val_precision', precision, prog_bar=True)
+        self.log('val_f1', f1, prog_bar=True, sync_dist=True)
+        precision = precision_score(targets, binary_preds, zero_division=0)
+        self.log('val_precision', precision, prog_bar=True, sync_dist=True)
         recall = recall_score(targets, binary_preds)
-        self.log('val_recall', recall, prog_bar=True)
+        self.log('val_recall', recall, prog_bar=True, sync_dist=True)
         self.validation_step_outputs.clear()  # free memory
 
     def on_test_epoch_end(self):
@@ -201,15 +221,15 @@ class DLRMModule(pl.LightningModule):
         # Calculate accuracy
         correct = (binary_preds == targets).sum().item()
         acc = correct / len(targets)
-        self.log('test_acc', acc, prog_bar=True)
+        self.log('test_acc', acc, prog_bar=True, sync_dist=True)
         auc = roc_auc_score(targets, preds)
-        self.log('test_auc', auc, prog_bar=True)
+        self.log('test_auc', auc, prog_bar=True, sync_dist=True)
         f1 = f1_score(targets, binary_preds)
-        self.log('test_f1', f1, prog_bar=True)
-        precision = precision_score(targets, binary_preds)
-        self.log('test_precision', precision, prog_bar=True)
+        self.log('test_f1', f1, prog_bar=True, sync_dist=True)
+        precision = precision_score(targets, binary_preds, zero_division=0)
+        self.log('test_precision', precision, prog_bar=True, sync_dist=True)
         recall = recall_score(targets, binary_preds)
-        self.log('test_recall', recall, prog_bar=True)
+        self.log('test_recall', recall, prog_bar=True, sync_dist=True)
         self.test_step_outputs.clear()  # free memory
 
     def configure_optimizers(self):
