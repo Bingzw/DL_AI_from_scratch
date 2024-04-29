@@ -37,7 +37,7 @@ if __name__ == "__main__":
     hidden_dim = 4
     learning_rate = 0.00005
     num_epochs = 30
-    dropout_rate = 0.4
+    dropout_rate = 0.6
     # create data module
     criteo_data = CriteoDataModule(data_path, batch_size=batch_size, hidden_dim=hidden_dim)
     print(criteo_data.dataset.features.head())
@@ -61,7 +61,7 @@ if __name__ == "__main__":
                          devices=1,  # How many GPUs/CPUs we want to use (1 is enough for the notebooks)
                          max_epochs=num_epochs,  # How many epochs to train for if no patience is set
                          callbacks=[
-                                    EarlyStoppingOnAucDifference(threshold=0.05),
+                                    EarlyStoppingOnAucDifference(threshold=0.1),
                                     checkpoint_callback,
                                     # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                                     LearningRateMonitor("epoch")],
