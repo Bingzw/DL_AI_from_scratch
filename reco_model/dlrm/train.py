@@ -2,8 +2,7 @@ import torch
 import os
 # lighting
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Callback
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 # ray
 from ray import train, tune
 from ray.train import Checkpoint

@@ -8,6 +8,19 @@ from reco_model.criteo_data import CriteoDataModule
 from reco_model.deepfm.dfmnet import DeepFMModule
 
 
+class EarlyStoppingOnAucDifference(pl.Callback):
+    def __init__(self, threshold):
+        super().__init__()
+        self.threshold = threshold
+
+    def on_validation_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+        if 'train_auc' in metrics and 'val_auc' in metrics:
+            auc_diff = metrics['train_auc'] - metrics['val_auc']
+            if auc_diff > self.threshold:
+                trainer.should_stop = True
+
+
 if __name__ == "__main__":
     # Set seed
     SEED = 42
@@ -20,16 +33,16 @@ if __name__ == "__main__":
     data_path = "../../data/reco_data/sampled_criteo_data.txt"
 
     # set hyperparameters
-    batch_size = 512
-    hidden_dim = 10
-    learning_rate = 0.0001
-    num_epochs = 100
-    dropout_rate = 0.1
+    batch_size = 128
+    hidden_dim = 4
+    learning_rate = 0.00005
+    num_epochs = 30
+    dropout_rate = 0.4
     # create data module
     criteo_data = CriteoDataModule(data_path, batch_size=batch_size, hidden_dim=hidden_dim)
     print(criteo_data.dataset.features.head())
 
-    mlp_dims = [64, 32]
+    mlp_dims = [16, 8]
     num_dense_features = criteo_data.dataset.dense_features.shape[1]
     embedding_sizes = criteo_data.embedding_sizes
     save_directory_name = "dfmnet"
@@ -47,7 +60,9 @@ if __name__ == "__main__":
                          # We run on a GPU (if possible)
                          devices=1,  # How many GPUs/CPUs we want to use (1 is enough for the notebooks)
                          max_epochs=num_epochs,  # How many epochs to train for if no patience is set
-                         callbacks=[checkpoint_callback,
+                         callbacks=[
+                                    EarlyStoppingOnAucDifference(threshold=0.05),
+                                    checkpoint_callback,
                                     # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                                     LearningRateMonitor("epoch")],
                          enable_progress_bar=True)  # Set to False if you do not want a progress bar

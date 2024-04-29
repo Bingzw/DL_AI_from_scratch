@@ -57,7 +57,7 @@ class DeepFMNet(nn.Module):
         self.mlp = nn.Sequential(*mlp_layers)
 
         # Initialize the weights of the top MLP layers
-        for mlp_layer in self.mlp_layers:
+        for mlp_layer in self.mlp:
             if isinstance(mlp_layer, nn.Linear):
                 nn.init.kaiming_normal_(mlp_layer.weight)
                 nn.init.zeros_(mlp_layer.bias)
