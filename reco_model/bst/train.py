@@ -16,8 +16,8 @@ class EarlyStoppingOnRMSEDifference(pl.Callback):
     def on_validation_end(self, model_trainer, pl_module):
         metrics = model_trainer.callback_metrics
         if 'train_rmse' in metrics and 'val_rmse' in metrics:
-            auc_diff = metrics['train_rmse'] - metrics['val_rmse']
-            if auc_diff > self.threshold:
+            rmse_diff = metrics['val_rmse'] - metrics['train_rmse']
+            if rmse_diff > self.threshold:
                 model_trainer.should_stop = True
 
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # data loading parameters
     sequence_length = 8
     step_size = 1
-    batch_size = 64
+    batch_size = 1024
 
     movie_seq_data = MovieRatingSeqDataModule(user_path, movie_path, rating_path, sequence_length, step_size,
                                               batch_size)
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     test_loader = movie_seq_data.test_dataloader()
 
     # model hyperparameters
-    num_epochs = 10
+    num_epochs = 100
     sparse_cardinality = movie_seq_data.dataset.sparse_cardinality
     mlp_dims = [4]
     movie_hidden_dim_per_head = 2
@@ -67,7 +67,7 @@ if __name__ == "__main__":
                          devices=1,  # How many GPUs/CPUs we want to use (1 is enough for the notebooks)
                          max_epochs=num_epochs,  # How many epochs to train for if no patience is set
                          callbacks=[
-                             EarlyStoppingOnRMSEDifference(threshold=1),
+                             EarlyStoppingOnRMSEDifference(threshold=0.5),
                              checkpoint_callback,
                              # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                              LearningRateMonitor("epoch")],
