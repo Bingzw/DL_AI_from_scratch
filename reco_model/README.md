@@ -8,6 +8,8 @@ This repository contains implementations of three different models: DeepFM, DLRM
 
 3. **MultiTask**: This model is implemented in the `multitask/mmoe.py` file. The MultiTask model is a multi-task learning model that uses a shared representation to solve multiple tasks simultaneously. The model uses the Multi-gate Mixture-of-Experts (MMoE) method to learn task-specific representations. For more information about MMoE, you can refer to the original paper: [Modeling Task Relationships in Multi-task Learning with Multi-gate Mixture-of-Experts](https://dl.acm.org/doi/10.1145/3219819.3220007).
 
+4. **BST**: This model is implemented in the `bst.py` file. The behavior sequence transformer is a model designed for handling the sequential nature of user interactions in recommendation systems. It uses a transformer-based architecture to capture the temporal dependencies in the user behavior sequences. For more information about the behavior sequence transformer, you can refer to the original paper: [Behavior Sequence Transformer for E-commerce Recommendation in Alibaba](https://arxiv.org/abs/2006.15578).
+
 
 ### Data 
 
@@ -16,6 +18,8 @@ The repository also contains two datasets:
 1. **Criteo Dataset**: This dataset is used with the DLRM model. It is a large-scale dataset for click-through rate prediction, containing both numerical and categorical features. The dataset is loaded and processed in the `criteo_data.py` file.
 
 2. **Census Income Dataset**: This dataset is used with the MultiTask model. It is a binary classification dataset where the task is to predict whether a person makes over 50K a year. The dataset contains both numerical and categorical features. The dataset is loaded and processed in the `census_income.py` file.
+
+3. **MovieLens Dataset**: This dataset is used with the BST model. It is a dataset containing user ratings for movies. The dataset is loaded and processed in the `movie_rating_seq.py` file.
 
 ### How to Run
 
