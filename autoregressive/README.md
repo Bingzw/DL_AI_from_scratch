@@ -27,3 +27,6 @@ Unit tests for the PixelCNN model are provided in `pixelcnn_test.py`. To run the
 ```bash
 python -m unittest pixelcnn_test.py
 ```
+
+## Reference
+[Conditional Image Generation with PixelCNN Decoders, van den Oord et al., 2016](https://arxiv.org/abs/1606.05328)

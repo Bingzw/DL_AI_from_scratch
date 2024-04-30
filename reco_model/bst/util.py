@@ -103,12 +103,4 @@ def rating_data_sequence_creation(user_path, movie_path, rating_path, sequence_l
     return ratings_sequence_data, sparse_cardinality
 
 
-if __name__ == "__main__":
-    user_path = "../../data/ml-1m/users.dat"
-    rating_path = "../../data/ml-1m/ratings.dat"
-    sequence_length = 8
-    step_size = 1
-    ratings_seq_data = rating_data_sequence_creation(user_path, rating_path, sequence_length, step_size)
-    print(ratings_seq_data.head())
-
 

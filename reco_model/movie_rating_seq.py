@@ -1,9 +1,8 @@
-import pandas as pd
 import numpy as np
 import torch
 import torch.utils.data as data
 import pytorch_lightning as pl
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, random_split
 from reco_model.bst.util import rating_data_sequence_creation
 
@@ -14,7 +13,6 @@ class MovieRatingDataSet(data.Dataset):
         self.ratings_seq_df, self.sparse_cardinality = rating_data_sequence_creation(user_path, movie_path, rating_path,
                                                                                      sequence_length, step_size)
         self.ratings_seq_df['user_id'] = self.ratings_seq_df['user_id'].astype(np.int64)
-        self.movies = pd.read_csv(movie_path, sep='::', names=['movie_id', 'title', 'genres'])
         self.sparse_columns = ['user_id', 'movie_id', 'sex', 'age_group', 'occupation', 'rating']
 
         for column in ['sex', 'age_group', 'occupation']:
@@ -33,12 +31,11 @@ class MovieRatingDataSet(data.Dataset):
         target_movie_rating = movie_history_ratings[-1]
 
         movie_history_seq = torch.LongTensor(movie_history_seq[:-1])
-        movie_history_ratings = torch.LongTensor(movie_history_ratings[:-1])
 
         sex = record['sex']
         age_group = record['age_group']
         occupation = record['occupation']
-        return user_id, movie_history_seq, movie_history_ratings, sex, age_group, occupation, \
+        return user_id, movie_history_seq, sex, age_group, occupation, \
                target_movie_id, target_movie_rating
 
 
