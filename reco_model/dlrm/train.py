@@ -86,13 +86,15 @@ def train_dlrm_per_worker(config):
 if __name__ == "__main__":
     # Set seed
     SEED = 42
-    CHECKPOINT_PATH = "/Users/bwang7/ebay/bing_github/DL_genAI_practicing/saved_models/reco_models"
+    path = os.getcwd()
+    parent_dir = os.path.dirname(os.path.dirname(path))
+    CHECKPOINT_PATH = os.path.join(parent_dir, 'saved_models/reco_models')
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    data_path = "/Users/bwang7/ebay/bing_github/DL_genAI_practicing/data/reco_data/sampled_criteo_data.txt"
+    data_path = os.path.join(parent_dir, 'data/reco_data/sampled_criteo_data.txt')
     save_directory_name = "dlrmnet"
     pl.seed_everything(SEED)  # To be reproducable
     # set hyperparameters
@@ -163,6 +165,7 @@ if __name__ == "__main__":
 
     # run this in terminal to check logs: tensorboard --logdir saved_models/reco_models/dlrmnet/lightning_logs
     # the best test AUC so far is 0.73
+
 
 
 

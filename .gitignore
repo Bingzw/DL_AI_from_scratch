@@ -164,6 +164,7 @@ pyvenv.cfg
 /bin/
 /data/cifar-10-batches-py/
 /data/MNIST/
+/data/FashionMNIST/
 /data/stl10_binary/
 /share/
 /saved_models/
