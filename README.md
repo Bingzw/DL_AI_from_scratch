@@ -19,6 +19,7 @@ The goal of this repo is to provide a comprehensive and practical understanding 
   - VAE
   - energy based model
   - normalizing flow
+  - diffusion model
 - Discovery models: used to learn the hidden state of the data for downstream task
   - AE
   - self-supervised learning:
