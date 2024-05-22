@@ -1,4 +1,4 @@
-# DL_genAI_practicing
+# DeepLearning/AI Self Learning
 
 ## Introduction
 This repo is for practicing deep learning and generative AI. It basically covers the popular deep learning models in CV, NLP, genAI etc.
