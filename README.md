@@ -1,4 +1,4 @@
-# DeepLearning/AI Self Learning
+# DeepLearning/AI From Stracth
 
 ## Introduction
 This repo is for practicing deep learning and generative AI. It basically covers the popular deep learning models in CV, NLP, genAI etc.
